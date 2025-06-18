@@ -23,12 +23,16 @@ document.addEventListener('DOMContentLoaded', function() {
       showStatus('スクリーンショットを取得中...', 'info');
       const tab = await getCurrentTab();
       
-      await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        function: takeFullPageScreenshot
+      const response = await chrome.runtime.sendMessage({
+        action: 'takeScreenshot',
+        tabId: tab.id
       });
       
-      showStatus('スクリーンショットを取得しました', 'success');
+      if (response.success) {
+        showStatus('スクリーンショットをダウンロードしました', 'success');
+      } else {
+        showStatus(`エラー: ${response.error}`, 'error');
+      }
     } catch (error) {
       console.error('Screenshot error:', error);
       showStatus('スクリーンショットの取得に失敗しました', 'error');
@@ -74,31 +78,6 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 
-function takeFullPageScreenshot() {
-  const script = document.createElement('script');
-  script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
-  script.onload = function() {
-    html2canvas(document.body, {
-      height: Math.max(
-        document.body.scrollHeight,
-        document.body.offsetHeight,
-        document.documentElement.clientHeight,
-        document.documentElement.scrollHeight,
-        document.documentElement.offsetHeight
-      ),
-      useCORS: true,
-      allowTaint: true
-    }).then(canvas => {
-      const link = document.createElement('a');
-      link.download = `screenshot_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.png`;
-      link.href = canvas.toDataURL();
-      link.click();
-    }).catch(error => {
-      console.error('Screenshot failed:', error);
-    });
-  };
-  document.head.appendChild(script);
-}
 
 function setAllCheckboxes(checked) {
   const checkboxes = document.querySelectorAll('input[type="checkbox"]:not(:disabled)');

@@ -6,8 +6,17 @@
   "permissions": [
     "activeTab",
     "scripting",
-    "downloads"
+    "downloads",
+    "tabs",
+    "debugger"
   ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self';",
+    "content_scripts": "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; object-src 'self';"
+  },
   "action": {
     "default_popup": "popup.html",
     "default_title": "Web Helper"
