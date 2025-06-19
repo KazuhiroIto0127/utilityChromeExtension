@@ -121,13 +121,20 @@ async function captureFullPage(tabId, filename) {
       }
 
       const blob = await canvas.convertToBlob({ type: 'image/png' });
-      const url = URL.createObjectURL(blob);
+
+      // Use FileReader because URL.createObjectURL is unavailable in Service Workers
+      const dataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+
       const downloadId = await chrome.downloads.download({
-        url,
+        url: dataUrl,
         filename,
         saveAs: false
       });
-      URL.revokeObjectURL(url);
 
       return { success: true, downloadId };
 
