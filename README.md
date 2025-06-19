@@ -18,13 +18,15 @@ Webページでの作業を効率化するChrome拡張機能です。拡張の�
 
 ### ファイル構成
 ```
-web-helper-extension/
+utilityChromeExtension/
 ├── manifest.json          # 拡張の設定ファイル
 ├── popup.html             # フローティングメニューのHTML
 ├── popup.css              # メニューのスタイル
 ├── popup.js               # メニューの動作制御
 ├── content.js             # Webページに注入されるスクリプト
 ├── background.js          # バックグラウンドスクリプト
+├── lib/                   # 外部ライブラリ
+│   └── html2canvas.min.js # HTMLをCanvasに変換するライブラリ
 └── icons/                 # 拡張のアイコン
     ├── icon16.png
     ├── icon48.png
@@ -35,7 +37,6 @@ web-helper-extension/
 - `activeTab`: 現在のタブでのスクリプト実行
 - `scripting`: コンテンツスクリプトの注入
 - `downloads`: スクリーンショットファイルのダウンロード
-- `tabs`: タブ情報の取得
 - `debugger`: Chrome DevTools Protocol へのアクセス
 
 ### 主要な実装ポイント
@@ -54,14 +55,15 @@ Chrome DevTools Protocol を使用した高品質なフルページキャプチ�
    - 一発でフルページスクリーンショットを取得（高速・高品質）
 
 2. **大きなページ (>16384px)**:
-   - タイル分割による `clip` パラメータでの精密キャプチャ
+   - タイル分割による `clip` パラメータでの精密キャプチャ（8000px単位）
    - `OffscreenCanvas` で効率的な画像結合
    - メモリ使用量を最適化
 
 **主な特徴:**
 - **固定ヘッダー自動対応**: DevTools Protocol が自動で適切に処理
 - **高解像度対応**: `devicePixelRatio` を考慮した精密な描画
-- **メモリ管理**: `createImageBitmap()` と `URL.revokeObjectURL()` でリーク防止
+- **メモリ管理**: `createImageBitmap()` でリーク防止
+- **Service Worker対応**: FileReader API を使用したデータURL変換
 
 #### チェックボックス操作
 - `document.querySelectorAll('input[type="checkbox"]')`でチェックボックスを取得
@@ -98,6 +100,7 @@ Chrome DevTools Protocol を使用した高品質なフルページキャプチ�
 - **条件分岐による最適化**: ページサイズに応じて最適な手法を自動選択
 - **タイル処理**: 大きなページでも確実にキャプチャ（8000px単位の分割）
 - **メモリ効率**: OffscreenCanvas と ImageBitmap による最適化
+- **レイアウト調整**: キャプチャ前の500ms待機で安定したレンダリング
 
 ## 実装済み機能
 
