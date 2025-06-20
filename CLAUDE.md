@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Web Helper Chrome Extension - A utility Chrome extension that provides a floating menu with web page productivity features including full-page screenshots and bulk checkbox operations.
+Web Helper Chrome Extension - A utility Chrome extension that provides a floating menu with web page productivity features including full-page screenshots, visible area screenshots, and bulk checkbox operations.
 
 ## Architecture
 
@@ -21,17 +21,24 @@ This is a Chrome Extension (Manifest V3) project with the following structure:
 - `activeTab`: Execute scripts in current tab
 - `scripting`: Inject content scripts
 - `downloads`: Download screenshot files
+- `debugger`: Chrome DevTools Protocol access for full-page screenshots
 
 ### Core Features Implementation
-1. **Full Page Screenshots**: Use Canvas API or html2canvas library to capture entire page including scrollable content
-2. **Bulk Checkbox Operations**: Query all checkboxes via `document.querySelectorAll('input[type="checkbox"]')` and manipulate `checked` property
+1. **Full Page Screenshots**: Use Chrome DevTools Protocol (`Page.captureScreenshot`) for high-quality capture of entire page including scrollable content
+2. **Visible Area Screenshots**: Use Chrome Tabs API (`chrome.tabs.captureVisibleTab`) for fast capture of currently visible browser area
+3. **Bulk Checkbox Operations**: Query all checkboxes via `document.querySelectorAll('input[type="checkbox"]')` and manipulate `checked` property
 
 ### Development Approach
 Follow the implementation priority outlined in README.md:
 1. Basic structure (manifest.json, popup files)
 2. Checkbox functionality (simpler DOM operations)
-3. Screenshot functionality (complex image processing)
+3. Screenshot functionality (both full-page and visible area)
 4. UI/UX improvements
+
+### Screenshot Implementation Details
+- **Full Page**: Uses Chrome DevTools Protocol with conditional optimization (one-shot for small pages, tiled capture for large pages >16384px)
+- **Visible Area**: Uses standard Chrome Tabs API for immediate capture of current viewport
+- Both functions automatically download captured images with timestamped filenames
 
 ## Security & Compatibility
 - Must comply with Content Security Policy (CSP)
