@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', function() {
   const screenshotBtn = document.getElementById('screenshot-btn');
+  const screenshotVisibleBtn = document.getElementById('screenshot-visible-btn');
   const checkboxAllBtn = document.getElementById('checkbox-all-btn');
   const checkboxNoneBtn = document.getElementById('checkbox-none-btn');
   const status = document.getElementById('status');
@@ -20,7 +21,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   screenshotBtn.addEventListener('click', async () => {
     try {
-      showStatus('スクリーンショットを取得中...', 'info');
+      showStatus('フルページスクリーンショットを取得中...', 'info');
       const tab = await getCurrentTab();
       
       const response = await chrome.runtime.sendMessage({
@@ -29,13 +30,32 @@ document.addEventListener('DOMContentLoaded', function() {
       });
       
       if (response.success) {
-        showStatus('スクリーンショットをダウンロードしました', 'success');
+        showStatus('フルページスクリーンショットをダウンロードしました', 'success');
       } else {
         showStatus(`エラー: ${response.error}`, 'error');
       }
     } catch (error) {
       console.error('Screenshot error:', error);
       showStatus('スクリーンショットの取得に失敗しました', 'error');
+    }
+  });
+
+  screenshotVisibleBtn.addEventListener('click', async () => {
+    try {
+      showStatus('表示範囲スクリーンショットを取得中...', 'info');
+      
+      const response = await chrome.runtime.sendMessage({
+        action: 'takeVisibleScreenshot'
+      });
+      
+      if (response.success) {
+        showStatus('表示範囲スクリーンショットをダウンロードしました', 'success');
+      } else {
+        showStatus(`エラー: ${response.error}`, 'error');
+      }
+    } catch (error) {
+      console.error('Visible screenshot error:', error);
+      showStatus('表示範囲スクリーンショットの取得に失敗しました', 'error');
     }
   });
 

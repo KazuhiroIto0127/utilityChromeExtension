@@ -17,6 +17,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   }
 
+  if (request.action === 'takeVisibleScreenshot') {
+    handleVisibleScreenshot(sendResponse);
+    return true;
+  }
+
   if (request.action === 'downloadScreenshot') {
     chrome.downloads.download({
       url: request.dataUrl,
@@ -43,6 +48,28 @@ async function takeScreenshot(tabId) {
   } catch (error) {
     console.error('Screenshot error:', error);
     return { success: false, error: error.message };
+  }
+}
+
+async function handleVisibleScreenshot(sendResponse) {
+  try {
+    // Get the current tab
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    
+    // Capture visible tab
+    const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, { format: 'png' });
+    
+    // Download the image
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    chrome.downloads.download({
+      url: dataUrl,
+      filename: `visible-screenshot-${timestamp}.png`
+    });
+    
+    sendResponse({ success: true });
+  } catch (error) {
+    console.error('Visible screenshot error:', error);
+    sendResponse({ success: false, error: error.message });
   }
 }
 
