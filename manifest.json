@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Web Helper Chrome Extension",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Webページでの作業を効率化するChrome拡張機能",
   "permissions": [
     "activeTab",
