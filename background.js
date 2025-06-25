@@ -22,6 +22,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   }
 
+  if (request.action === 'startAreaSelection') {
+    handleAreaSelection(request.tabId, sendResponse);
+    return true;
+  }
+
+  if (request.action === 'captureAreaScreenshot') {
+    handleAreaScreenshot(request.area, sendResponse);
+    return true;
+  }
+
   if (request.action === 'downloadScreenshot') {
     chrome.downloads.download({
       url: request.dataUrl,
@@ -69,6 +79,117 @@ async function handleVisibleScreenshot(sendResponse) {
     sendResponse({ success: true });
   } catch (error) {
     console.error('Visible screenshot error:', error);
+    sendResponse({ success: false, error: error.message });
+  }
+}
+
+async function handleAreaSelection(tabId, sendResponse) {
+  try {
+    // Inject content script to start area selection
+    await chrome.scripting.executeScript({
+      target: { tabId: tabId },
+      files: ['content.js']
+    });
+
+    // Send message to content script to start selection
+    const response = await chrome.tabs.sendMessage(tabId, {
+      action: 'startAreaSelection'
+    });
+
+    sendResponse({ success: true });
+  } catch (error) {
+    console.error('Area selection error:', error);
+    sendResponse({ success: false, error: error.message });
+  }
+}
+
+async function handleAreaScreenshot(area, sendResponse) {
+  console.log('handleAreaScreenshot called with area:', area);
+  
+  try {
+    // Get the current tab
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    console.log('Current tab:', tab.id);
+
+    // Capture visible tab first
+    const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, { format: 'png' });
+    console.log('Captured visible tab, data URL length:', dataUrl.length);
+
+    // Get device pixel ratio using Manifest V3 API
+    let devicePixelRatio = 1;
+    try {
+      const dprResult = await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        function: () => { return window.devicePixelRatio; }
+      });
+      devicePixelRatio = dprResult[0].result || 1;
+      console.log('Device pixel ratio:', devicePixelRatio);
+    } catch (error) {
+      console.warn('Failed to get device pixel ratio, using 1:', error);
+    }
+
+    // Create an image bitmap for processing (Service Worker compatible)
+    const imageBitmap = await createImageBitmap(await fetch(dataUrl).then(r => r.blob()));
+    
+    console.log('ImageBitmap created, dimensions:', imageBitmap.width, 'x', imageBitmap.height);
+    
+    // Create canvas for cropping
+    const canvas = new OffscreenCanvas(area.width, area.height);
+    const ctx = canvas.getContext('2d');
+
+    // Scale coordinates for high DPI displays
+    const scaledX = area.x * devicePixelRatio;
+    const scaledY = area.y * devicePixelRatio;
+    const scaledWidth = area.width * devicePixelRatio;
+    const scaledHeight = area.height * devicePixelRatio;
+
+    console.log('Scaled coordinates:', {
+      x: scaledX, y: scaledY, 
+      width: scaledWidth, height: scaledHeight
+    });
+
+    // Draw the cropped area
+    ctx.drawImage(
+      imageBitmap,
+      scaledX, scaledY, scaledWidth, scaledHeight,
+      0, 0, area.width, area.height
+    );
+
+    // Convert to blob and create data URL
+    const blob = await canvas.convertToBlob({ type: 'image/png' });
+    console.log('Canvas converted to blob, size:', blob.size);
+
+    // Use FileReader to convert blob to data URL
+    const reader = new FileReader();
+    reader.onload = function() {
+      // Download the cropped image
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const filename = `area-screenshot-${timestamp}.png`;
+      
+      console.log('Downloading file:', filename);
+      chrome.downloads.download({
+        url: reader.result,
+        filename: filename
+      }, (downloadId) => {
+        if (chrome.runtime.lastError) {
+          console.error('Download error:', chrome.runtime.lastError);
+          sendResponse({ success: false, error: chrome.runtime.lastError.message });
+        } else {
+          console.log('Download started with ID:', downloadId);
+          sendResponse({ success: true, downloadId });
+        }
+      });
+    };
+    
+    reader.onerror = function(error) {
+      console.error('FileReader error:', error);
+      sendResponse({ success: false, error: 'Failed to read blob as data URL' });
+    };
+    
+    reader.readAsDataURL(blob);
+
+  } catch (error) {
+    console.error('Area screenshot error:', error);
     sendResponse({ success: false, error: error.message });
   }
 }

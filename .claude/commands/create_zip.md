@@ -1,0 +1,1 @@
+chrome web storeにアップロードするためのzipファイル作成して

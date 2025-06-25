@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded', function() {
   const screenshotBtn = document.getElementById('screenshot-btn');
   const screenshotVisibleBtn = document.getElementById('screenshot-visible-btn');
+  const screenshotAreaBtn = document.getElementById('screenshot-area-btn');
   const checkboxAllBtn = document.getElementById('checkbox-all-btn');
   const checkboxNoneBtn = document.getElementById('checkbox-none-btn');
   const status = document.getElementById('status');
@@ -56,6 +57,29 @@ document.addEventListener('DOMContentLoaded', function() {
     } catch (error) {
       console.error('Visible screenshot error:', error);
       showStatus('表示範囲スクリーンショットの取得に失敗しました', 'error');
+    }
+  });
+
+  screenshotAreaBtn.addEventListener('click', async () => {
+    try {
+      showStatus('範囲を選択してください...', 'info');
+      const tab = await getCurrentTab();
+      
+      const response = await chrome.runtime.sendMessage({
+        action: 'startAreaSelection',
+        tabId: tab.id
+      });
+      
+      if (response.success) {
+        showStatus('ドラッグして範囲を選択し、マウスを離してください', 'info');
+        // Close popup to allow area selection
+        window.close();
+      } else {
+        showStatus(`エラー: ${response.error}`, 'error');
+      }
+    } catch (error) {
+      console.error('Area selection error:', error);
+      showStatus('範囲選択の開始に失敗しました', 'error');
     }
   });
 
