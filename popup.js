@@ -1,126 +1,95 @@
-document.addEventListener('DOMContentLoaded', function() {
-  const screenshotBtn = document.getElementById('screenshot-btn');
-  const screenshotVisibleBtn = document.getElementById('screenshot-visible-btn');
-  const screenshotAreaBtn = document.getElementById('screenshot-area-btn');
-  const checkboxAllBtn = document.getElementById('checkbox-all-btn');
-  const checkboxNoneBtn = document.getElementById('checkbox-none-btn');
+document.addEventListener('DOMContentLoaded', function () {
   const status = document.getElementById('status');
 
-  function showStatus(message, type = 'info') {
+  // --- Helper Functions ---
+  const showStatus = (message, type = 'info') => {
     status.textContent = message;
     status.className = `status ${type}`;
-    setTimeout(() => {
-      status.textContent = '';
-      status.className = 'status';
-    }, 3000);
-  }
+    if (type !== 'info') { // Keep info messages until next action
+      setTimeout(() => {
+        status.textContent = '';
+        status.className = 'status';
+      }, 3000);
+    }
+  };
 
-  async function getCurrentTab() {
+  const getCurrentTab = async () => {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     return tab;
-  }
+  };
 
-  screenshotBtn.addEventListener('click', async () => {
+  // --- Action Handlers ---
+
+  const handleScreenshot = async (action, options) => {
+    const { startMsg, successMsg, errorMsg, closePopup = false } = options;
     try {
-      showStatus('フルページスクリーンショットを取得中...', 'info');
+      showStatus(startMsg, 'info');
       const tab = await getCurrentTab();
-      
       const response = await chrome.runtime.sendMessage({
-        action: 'takeScreenshot',
-        tabId: tab.id
+        action: action,
+        tabId: tab.id, // Not always needed by receiver, but safe to send
       });
-      
+
       if (response.success) {
-        showStatus('フルページスクリーンショットをダウンロードしました', 'success');
+        showStatus(successMsg, closePopup ? 'info' : 'success');
+        if (closePopup) {
+          window.close();
+        }
       } else {
-        showStatus(`エラー: ${response.error}`, 'error');
+        showStatus(`エラー: ${response.error || '不明なエラー'}`, 'error');
       }
     } catch (error) {
-      console.error('Screenshot error:', error);
-      showStatus('スクリーンショットの取得に失敗しました', 'error');
+      console.error(`${action} error:`, error);
+      showStatus(errorMsg, 'error');
     }
-  });
+  };
 
-  screenshotVisibleBtn.addEventListener('click', async () => {
-    try {
-      showStatus('表示範囲スクリーンショットを取得中...', 'info');
-      
-      const response = await chrome.runtime.sendMessage({
-        action: 'takeVisibleScreenshot'
-      });
-      
-      if (response.success) {
-        showStatus('表示範囲スクリーンショットをダウンロードしました', 'success');
-      } else {
-        showStatus(`エラー: ${response.error}`, 'error');
-      }
-    } catch (error) {
-      console.error('Visible screenshot error:', error);
-      showStatus('表示範囲スクリーンショットの取得に失敗しました', 'error');
-    }
-  });
-
-  screenshotAreaBtn.addEventListener('click', async () => {
-    try {
-      showStatus('範囲を選択してください...', 'info');
-      const tab = await getCurrentTab();
-      
-      const response = await chrome.runtime.sendMessage({
-        action: 'startAreaSelection',
-        tabId: tab.id
-      });
-      
-      if (response.success) {
-        showStatus('ドラッグして範囲を選択し、マウスを離してください', 'info');
-        // Close popup to allow area selection
-        window.close();
-      } else {
-        showStatus(`エラー: ${response.error}`, 'error');
-      }
-    } catch (error) {
-      console.error('Area selection error:', error);
-      showStatus('範囲選択の開始に失敗しました', 'error');
-    }
-  });
-
-  checkboxAllBtn.addEventListener('click', async () => {
+  const handleCheckbox = async (check) => {
     try {
       showStatus('チェックボックスを操作中...', 'info');
       const tab = await getCurrentTab();
-      
-      const result = await chrome.scripting.executeScript({
+      const [result] = await chrome.scripting.executeScript({
         target: { tabId: tab.id },
         function: setAllCheckboxes,
-        args: [true]
+        args: [check],
       });
-      
-      const count = result[0].result;
-      showStatus(`${count}個のチェックボックスをチェックしました`, 'success');
+      const count = result.result;
+      const message = check
+        ? `${count}個のチェックボックスをオンにしました`
+        : `${count}個のチェックボックスをオフにしました`;
+      showStatus(message, 'success');
     } catch (error) {
       console.error('Checkbox error:', error);
       showStatus('チェックボックスの操作に失敗しました', 'error');
     }
-  });
+  };
 
-  checkboxNoneBtn.addEventListener('click', async () => {
-    try {
-      showStatus('チェックボックスを操作中...', 'info');
-      const tab = await getCurrentTab();
-      
-      const result = await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        function: setAllCheckboxes,
-        args: [false]
-      });
-      
-      const count = result[0].result;
-      showStatus(`${count}個のチェックボックスのチェックを解除しました`, 'success');
-    } catch (error) {
-      console.error('Checkbox error:', error);
-      showStatus('チェックボックスの操作に失敗しました', 'error');
-    }
-  });
+  // --- Event Listeners ---
+
+  document.getElementById('screenshot-btn').addEventListener('click', () => handleScreenshot('takeScreenshot', {
+    startMsg: 'フルページスクリーンショットを取得中...',
+    successMsg: 'フルページスクリーンショットをダウンロードしました',
+    errorMsg: 'スクリーンショットの取得に失敗しました',
+  }));
+
+  document.getElementById('screenshot-visible-btn').addEventListener('click', () => handleScreenshot('takeVisibleScreenshot', {
+    startMsg: '表示範囲スクリーンショットを取得中...',
+    successMsg: '表示範囲スクリーンショットをダウンロードしました',
+    errorMsg: '表示範囲スクリーンショットの取得に失敗しました',
+  }));
+
+  document.getElementById('screenshot-area-btn').addEventListener('click', () => handleScreenshot('startAreaSelection', {
+    startMsg: '範囲を選択してください...',
+    successMsg: 'ドラッグして範囲を選択し、マウスを離してください',
+    errorMsg: '範囲選択の開始に失敗しました',
+    closePopup: true,
+  }));
+
+  document.getElementById('checkbox-all-btn').addEventListener('click', () => handleCheckbox(true));
+
+  document.getElementById('checkbox-none-btn').addEventListener('click', () => handleCheckbox(false));
 });
+
 
 
 function setAllCheckboxes(checked) {
