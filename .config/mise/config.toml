@@ -1,0 +1,21 @@
+[tasks.create-zip]
+description = "Create zip file for Chrome Web Store upload"
+run = """
+# Remove existing zip file if it exists
+rm -f web-helper-extension.zip
+
+# Create zip file excluding development files
+zip -r web-helper-extension.zip . \
+  -x "*.git*" \
+  -x "*.DS_Store" \
+  -x "node_modules/*" \
+  -x ".config/*" \
+  -x ".claude/*" \
+  -x "img/*" \
+  -x "README.md" \
+  -x "CLAUDE.md" \
+  -x "*.md" \
+  -x "web-helper-extension.zip"
+
+echo "Created web-helper-extension.zip for Chrome Web Store upload"
+"""
